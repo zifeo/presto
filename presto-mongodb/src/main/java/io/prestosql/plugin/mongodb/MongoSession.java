@@ -46,14 +46,20 @@ import io.prestosql.spi.type.IntegerType;
 import io.prestosql.spi.type.NamedTypeSignature;
 import io.prestosql.spi.type.RowFieldName;
 import io.prestosql.spi.type.StandardTypes;
+import io.prestosql.spi.type.TimestampType;
 import io.prestosql.spi.type.Type;
 import io.prestosql.spi.type.TypeManager;
 import io.prestosql.spi.type.TypeSignature;
 import io.prestosql.spi.type.TypeSignatureParameter;
 import io.prestosql.spi.type.VarcharType;
+
 import org.bson.Document;
 import org.bson.types.ObjectId;
 
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -413,6 +419,10 @@ public class MongoSession
 
         if (type instanceof VarcharType) {
             return Optional.of(((Slice) prestoNativeValue).toStringUtf8());
+        }
+
+        if (type instanceof TimestampType) {
+            return Optional.of(LocalDateTime.ofInstant(Instant.ofEpochMilli((Long) prestoNativeValue), ZoneOffset.UTC).format(DateTimeFormatter.ISO_DATE_TIME));
         }
 
         return Optional.empty();

@@ -19,8 +19,12 @@ import io.prestosql.spi.connector.ColumnHandle;
 import io.prestosql.spi.predicate.Domain;
 import io.prestosql.spi.predicate.TupleDomain;
 import io.prestosql.spi.predicate.ValueSet;
+import io.prestosql.spi.type.SqlTimestamp;
+import io.prestosql.testing.DateTimeTestingUtils;
 import org.bson.Document;
 import org.testng.annotations.Test;
+
+import java.time.LocalDateTime;
 
 import static io.airlift.slice.Slices.utf8Slice;
 import static io.prestosql.spi.predicate.Range.equal;
@@ -29,6 +33,7 @@ import static io.prestosql.spi.predicate.Range.greaterThanOrEqual;
 import static io.prestosql.spi.predicate.Range.lessThan;
 import static io.prestosql.spi.predicate.Range.range;
 import static io.prestosql.spi.type.BigintType.BIGINT;
+import static io.prestosql.spi.type.TimestampType.createTimestampType;
 import static io.prestosql.spi.type.VarcharType.createUnboundedVarcharType;
 import static java.util.Arrays.asList;
 import static org.testng.Assert.assertEquals;
@@ -38,6 +43,7 @@ public class TestMongoSession
     private static final MongoColumnHandle COL1 = new MongoColumnHandle("col1", BIGINT, false);
     private static final MongoColumnHandle COL2 = new MongoColumnHandle("col2", createUnboundedVarcharType(), false);
     private static final MongoColumnHandle COL3 = new MongoColumnHandle("col3", createUnboundedVarcharType(), false);
+    private static final MongoColumnHandle COL4 = new MongoColumnHandle("col3", createTimestampType(6), false);
 
     @Test
     public void testBuildQuery()
@@ -64,6 +70,21 @@ public class TestMongoSession
         Document expected = new Document()
                 .append(COL3.getName(), new Document().append("$gt", "hello").append("$lte", "world"))
                 .append(COL2.getName(), new Document("$gte", "a value"));
+        assertEquals(query, expected);
+    }
+
+    @Test
+    public void testBuildQueryTimestampType()
+    {
+        SqlTimestamp dt = DateTimeTestingUtils.sqlTimestampOf(6, LocalDateTime.of(2020, 10, 29, 21, 57, 7));
+
+        TupleDomain<ColumnHandle> tupleDomain = TupleDomain.withColumnDomains(ImmutableMap.of(
+                COL4, Domain.create(ValueSet.ofRanges(
+                        range(createTimestampType(6), dt.getMillis(),false, dt.getMillis() + 60000, true)),false)));
+
+        Document query = MongoSession.buildQuery(tupleDomain);
+        Document expected = new Document()
+                .append(COL4.getName(), new Document().append("$gt", "2020-10-29T21:57:07").append("$lte", "2020-10-29T21:58:07"));
         assertEquals(query, expected);
     }
 
